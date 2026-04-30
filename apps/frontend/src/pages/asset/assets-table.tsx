@@ -236,7 +236,7 @@ export function AssetsTable({
                     quote.close,
                     quote.currency ?? asset.quoteCcy ?? baseCurrency,
                     true,
-                    asset.kind === "BOND" ? 4 : undefined,
+                    asset.instrumentType === "BOND" ? 4 : undefined,
                   )}
                 </span>
               </div>

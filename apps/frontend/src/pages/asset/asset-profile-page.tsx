@@ -631,7 +631,7 @@ export const AssetProfilePage = () => {
             lots={holding.lots}
             currency={symbolHolding?.currency ?? profile.currency ?? baseCurrency}
             marketPrice={Number(holding.price ?? profile.marketPrice)}
-            assetKind={assetProfile?.kind}
+            instrumentType={assetProfile?.instrumentType}
           />
         ),
       });
@@ -656,6 +656,7 @@ export const AssetProfilePage = () => {
           assetId={assetId}
           currency={quote?.currency ?? profile?.currency ?? baseCurrency}
           assetKind={assetProfile?.kind}
+          instrumentType={assetProfile?.instrumentType}
           isManualDataSource={isManualPricingMode}
           onSaveQuote={(quote: Quote) => saveQuoteMutation.mutate(quote)}
           onDeleteQuote={(id: string) => deleteQuoteMutation.mutate(id)}
@@ -824,6 +825,7 @@ export const AssetProfilePage = () => {
               assetId={assetId}
               currency={profile?.currency ?? baseCurrency}
               assetKind={assetProfile?.kind}
+              instrumentType={assetProfile?.instrumentType}
               isManualDataSource={isManualPricingMode}
               onSaveQuote={(quote: Quote) => saveQuoteMutation.mutate(quote)}
               onDeleteQuote={(id: string) => deleteQuoteMutation.mutate(id)}
@@ -1253,7 +1255,7 @@ export const AssetProfilePage = () => {
                   lots={holding.lots}
                   currency={symbolHolding?.currency ?? profile.currency ?? baseCurrency}
                   marketPrice={Number(holding.price ?? profile.marketPrice)}
-                  assetKind={assetProfile?.kind}
+                  instrumentType={assetProfile?.instrumentType}
                 />
               </TabsContent>
             )}
@@ -1276,6 +1278,7 @@ export const AssetProfilePage = () => {
                   assetId={assetId}
                   currency={quote?.currency ?? profile?.currency ?? baseCurrency}
                   assetKind={assetProfile?.kind}
+                  instrumentType={assetProfile?.instrumentType}
                   isManualDataSource={isManualPricingMode}
                   onSaveQuote={(quote: Quote) => saveQuoteMutation.mutate(quote)}
                   onDeleteQuote={(id: string) => deleteQuoteMutation.mutate(id)}

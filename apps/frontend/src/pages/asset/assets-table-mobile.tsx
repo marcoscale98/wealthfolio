@@ -253,7 +253,7 @@ export function AssetsTableMobile({
                           latestQuotes[asset.id].quote.close,
                           latestQuotes[asset.id].quote.currency ?? asset.quoteCcy ?? baseCurrency,
                           true,
-                          asset.kind === "BOND" ? 4 : undefined,
+                          asset.instrumentType === "BOND" ? 4 : undefined,
                         )}
                         {isStaleQuote(latestQuotes[asset.id], asset) ? (
                           <Tooltip>

@@ -6,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@wealthfolio/ui/components/ui/table";
-import { AssetKind, Lot } from "@/lib/types";
+import { Lot } from "@/lib/types";
 import { formatAmount } from "@wealthfolio/ui";
 import { formatDate, formatQuantity } from "@/lib/utils";
 import { Card, CardContent } from "@wealthfolio/ui/components/ui/card";
@@ -17,10 +17,15 @@ interface AssetLotsTableProps {
   lots: Lot[];
   currency: string;
   marketPrice: number;
-  assetKind?: AssetKind | null;
+  instrumentType?: string | null;
 }
 
-export const AssetLotsTable = ({ lots, currency, marketPrice, assetKind }: AssetLotsTableProps) => {
+export const AssetLotsTable = ({
+  lots,
+  currency,
+  marketPrice,
+  instrumentType,
+}: AssetLotsTableProps) => {
   if (!lots || lots.length === 0) {
     return null;
   }
@@ -61,7 +66,7 @@ export const AssetLotsTable = ({ lots, currency, marketPrice, assetKind }: Asset
                         lot.acquisitionPrice,
                         currency,
                         true,
-                        assetKind === "BOND" ? 4 : undefined,
+                        instrumentType === "BOND" ? 4 : undefined,
                       )}
                     </TableCell>
                     <TableCell className="text-right">

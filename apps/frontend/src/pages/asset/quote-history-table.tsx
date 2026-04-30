@@ -55,21 +55,20 @@ import {
 interface QuoteHistoryTableProps {
   data: Quote[];
   assetKind?: AssetKind | null;
+  instrumentType?: string | null;
   isManualDataSource?: boolean;
   onSaveQuote?: (quote: Quote) => void;
   onDeleteQuote?: (quoteId: string) => void;
   onChangeDataSource?: (isManual: boolean) => void;
 }
 
-const getDecimalPrecision = (assetKind?: AssetKind | null): number => {
-  switch (assetKind) {
-    case "FX":
-      return 6;
-    case "BOND":
-      return 4;
-    default:
-      return 2;
-  }
+const getDecimalPrecision = (
+  assetKind?: AssetKind | null,
+  instrumentType?: string | null,
+): number => {
+  if (assetKind === "FX") return 6;
+  if (instrumentType === "BOND") return 4;
+  return 2;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -87,12 +86,13 @@ const emptyQuote: Partial<Quote> = {
 export const QuoteHistoryTable: React.FC<QuoteHistoryTableProps> = ({
   data,
   assetKind,
+  instrumentType,
   isManualDataSource = false,
   onSaveQuote,
   onDeleteQuote,
   onChangeDataSource,
 }) => {
-  const decimalPrecision = getDecimalPrecision(assetKind);
+  const decimalPrecision = getDecimalPrecision(assetKind, instrumentType);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedValues, setEditedValues] = useState<Partial<Quote>>({});
   const [isAddingQuote, setIsAddingQuote] = useState(false);

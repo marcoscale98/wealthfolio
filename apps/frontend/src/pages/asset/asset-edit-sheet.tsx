@@ -1020,7 +1020,7 @@ export function AssetEditSheet({
                                 latestQuote.close,
                                 latestQuote.currency,
                                 true,
-                                asset?.kind === "BOND" ? 4 : undefined,
+                                asset?.instrumentType === "BOND" ? 4 : undefined,
                               )}
                             </p>
                             <p className="text-muted-foreground text-xs">Latest price</p>
