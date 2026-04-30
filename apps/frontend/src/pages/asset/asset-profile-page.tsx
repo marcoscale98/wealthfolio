@@ -631,6 +631,7 @@ export const AssetProfilePage = () => {
             lots={holding.lots}
             currency={symbolHolding?.currency ?? profile.currency ?? baseCurrency}
             marketPrice={Number(holding.price ?? profile.marketPrice)}
+            assetKind={assetProfile?.kind}
           />
         ),
       });
@@ -1252,6 +1253,7 @@ export const AssetProfilePage = () => {
                   lots={holding.lots}
                   currency={symbolHolding?.currency ?? profile.currency ?? baseCurrency}
                   marketPrice={Number(holding.price ?? profile.marketPrice)}
+                  assetKind={assetProfile?.kind}
                 />
               </TabsContent>
             )}

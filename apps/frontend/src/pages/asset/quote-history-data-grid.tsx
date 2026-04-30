@@ -24,9 +24,11 @@ const normalizeDate = (value: Date | string): Date => {
 const getDecimalPrecision = (assetKind?: AssetKind | null): number => {
   switch (assetKind) {
     case "FX":
-      return 6; // FX rates need high precision
+      return 6;
+    case "BOND":
+      return 4;
     default:
-      return 4; // Standard precision for stocks, ETFs, bonds, etc.
+      return 2;
   }
 };
 
