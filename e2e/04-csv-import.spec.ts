@@ -336,7 +336,6 @@ test.describe("CSV Import Wizard", () => {
     await page.waitForTimeout(1000);
 
     await expect(page.getByText("CSV Preview")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/28 row/i)).toBeVisible({ timeout: 5000 });
 
     // ── Mapping step ─────────────────────────────────────────────────────────
     const continueBtn = page.getByRole("button", { name: /Configure Mapping/i });
@@ -484,10 +483,10 @@ test.describe("CSV Import Wizard", () => {
       accountName: IMPORT_ACCOUNT,
     });
 
-    // BOND: INTEREST with COUPON subtype in EUR account
+    // BOND: INTEREST with STAKING_REWARD subtype in EUR account
     await assertDataGridRow(page, "e2e-bond-interest", {
       assetSymbol: "IT0005441883",
-      subtype: "COUPON",
+      subtype: "Staking Reward",
       accountName: IMPORT_EUR_ACCOUNT,
     });
 

@@ -255,7 +255,6 @@ export async function enableDataGridColumn(page: Page, columnId: string) {
   const toggleBtn = page.getByRole("button", { name: /Toggle columns/i });
   await expect(toggleBtn).toBeVisible({ timeout: 5000 });
   await toggleBtn.click();
-  await page.waitForTimeout(300);
 
   const item = page.getByRole("menuitemcheckbox", { name: displayName });
   await expect(item).toBeVisible({ timeout: 3000 });
@@ -264,7 +263,9 @@ export async function enableDataGridColumn(page: Page, columnId: string) {
     await item.click();
   }
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(300);
+  await expect(page.getByRole("menu"))
+    .toBeHidden({ timeout: 3000 })
+    .catch(() => {});
 }
 
 /**
@@ -286,7 +287,6 @@ export async function assertDataGridRow(
   const searchBox = page.getByPlaceholder("Search ...");
   await expect(searchBox).toBeVisible({ timeout: 5000 });
   await searchBox.fill(commentMarker);
-  await page.waitForTimeout(500); // allow debounce + network round-trip
 
   const row = page.locator('[data-slot="grid-row"]').filter({
     has: page.locator('[data-column-id="comment"]', { hasText: commentMarker }),
@@ -300,7 +300,6 @@ export async function assertDataGridRow(
 
   // Clear search so the next assertion starts from a clean state
   await searchBox.clear();
-  await page.waitForTimeout(300);
 }
 
 export async function loginIfNeeded(page: Page) {
