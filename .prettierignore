@@ -1,5 +1,5 @@
-# Claude worktrees
-.claude/worktrees/
+# Claude local config (rules, skills, settings — not committed)
+.claude/
 
 # Local hidden directories
 .agents/
