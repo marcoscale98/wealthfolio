@@ -3,6 +3,7 @@
 
 # Local hidden directories
 .agents/
+.air/
 .codex/
 .conductor/
 .kiro/
