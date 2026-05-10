@@ -265,7 +265,14 @@ export async function enableDataGridColumn(page: Page, columnId: string) {
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu"))
     .toBeHidden({ timeout: 3000 })
-    .catch(() => {});
+    .catch((err) =>
+      console.warn(`enableDataGridColumn: menu did not close after enabling "${columnId}"`, err),
+    );
+
+  // Verify the column is rendered — catches COLUMN_DISPLAY_NAMES desync with the toolbar
+  await expect(page.locator(`[data-column-id="${columnId}"]`).first()).toBeVisible({
+    timeout: 3000,
+  });
 }
 
 /**

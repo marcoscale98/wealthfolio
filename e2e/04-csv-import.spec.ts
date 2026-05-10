@@ -326,14 +326,12 @@ test.describe("CSV Import Wizard", () => {
     await expect(page.getByRole("heading", { name: /Import Activities/i })).toBeVisible({
       timeout: 10000,
     });
-    await page.waitForTimeout(1000);
 
     // Select default account (rows with empty account column fall back to this)
     await selectImportAccount(page, IMPORT_ACCOUNT);
 
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(FULL_COVERAGE_CSV);
-    await page.waitForTimeout(1000);
 
     await expect(page.getByText("CSV Preview")).toBeVisible({ timeout: 10000 });
 
@@ -353,15 +351,14 @@ test.describe("CSV Import Wizard", () => {
       .first();
     await expect(firstSelector).toBeVisible({ timeout: 10000 });
     await firstSelector.click();
-    await page.waitForTimeout(300);
     const searchInput = page.getByPlaceholder("Search accounts...");
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(IMPORT_ACCOUNT);
-    await page.waitForTimeout(300);
     await page
       .getByRole("option", { name: new RegExp(IMPORT_ACCOUNT, "i") })
       .first()
       .click();
-    await page.waitForTimeout(500);
+    await expect(page.getByText(/1 of 2 mapped/i)).toBeVisible({ timeout: 10000 });
 
     // After mapping USD account all its rows become valid; remaining selector is for EUR account.
     const secondSelector = page
@@ -370,33 +367,29 @@ test.describe("CSV Import Wizard", () => {
       .first();
     await expect(secondSelector).toBeVisible({ timeout: 5000 });
     await secondSelector.click();
-    await page.waitForTimeout(300);
     const searchInput2 = page.getByPlaceholder("Search accounts...");
+    await expect(searchInput2).toBeVisible({ timeout: 5000 });
     await searchInput2.fill(IMPORT_EUR_ACCOUNT);
-    await page.waitForTimeout(300);
     await page
       .getByRole("option", { name: new RegExp(IMPORT_EUR_ACCOUNT, "i") })
       .first()
       .click();
-    await page.waitForTimeout(500);
+    await expect(page.getByText(/2 of 2 mapped/i)).toBeVisible({ timeout: 10000 });
 
     // ── Review Assets step (market data resolution) ──────────────────────────
     const reviewAssetsBtn = page.getByRole("button", { name: /Review Assets/i });
     await expect(reviewAssetsBtn).toBeEnabled({ timeout: 15000 });
     await reviewAssetsBtn.click();
-    await page.waitForTimeout(2000);
 
     // All 7 distinct symbols must resolve via Yahoo Finance / Börse Frankfurt (no fallback)
     const reviewActivitiesBtn = page.getByRole("button", { name: /Review Activities/i });
     await expect(reviewActivitiesBtn).toBeEnabled({ timeout: 120000 });
     await reviewActivitiesBtn.click();
-    await page.waitForTimeout(2000);
 
     // ── Activity review & import ──────────────────────────────────────────────
     const continueToImportBtn = page.getByRole("button", { name: /Continue to Import/i });
     await expect(continueToImportBtn).toBeEnabled({ timeout: 30000 });
     await continueToImportBtn.click();
-    await page.waitForTimeout(1000);
 
     await expect(page.getByText("To Import", { exact: true }).first()).toBeVisible({
       timeout: 10000,
@@ -409,11 +402,10 @@ test.describe("CSV Import Wizard", () => {
     // ── Round-trip verification in Activities data-grid ──────────────────────
     await page.goto(`${BASE_URL}/activities`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible({ timeout: 10000 });
-    await page.waitForTimeout(1000);
 
     // Switch to edit mode (data-grid) — only mode with comment, fxRate, instrumentType columns
+    await expect(page.getByTestId("edit-mode-toggle")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("edit-mode-toggle").click();
-    await page.waitForTimeout(1000);
     await expect(page.locator('[data-slot="grid"]')).toBeVisible({ timeout: 10000 });
 
     // Enable instrumentType column (hidden by default)
@@ -466,6 +458,24 @@ test.describe("CSV Import Wizard", () => {
       amount: "25",
     });
 
+    // EQUITY (ETF): VOO BUY
+    await assertDataGridRow(page, "e2e-voo-buy", {
+      assetSymbol: "VOO",
+      quantity: "3",
+      unitPrice: "450",
+      amount: "1350",
+      instrumentType: "Equity",
+    });
+
+    // EQUITY (ETF): VOO SELL
+    await assertDataGridRow(page, "e2e-voo-sell", {
+      assetSymbol: "VOO",
+      quantity: "1",
+      unitPrice: "460",
+      amount: "460",
+      instrumentType: "Equity",
+    });
+
     // VOO DIVIDEND in EUR account: subtype, fxRate, account override
     await assertDataGridRow(page, "e2e-voo-dividend", {
       assetSymbol: "VOO",
@@ -483,6 +493,14 @@ test.describe("CSV Import Wizard", () => {
       accountName: IMPORT_ACCOUNT,
     });
 
+    // BOND: SELL — currency EUR, fxRate
+    await assertDataGridRow(page, "e2e-bond-sell", {
+      assetSymbol: "IT0005441883",
+      currency: "EUR",
+      fxRate: "1.09",
+      instrumentType: "Bond",
+    });
+
     // BOND: INTEREST with STAKING_REWARD subtype in EUR account
     await assertDataGridRow(page, "e2e-bond-interest", {
       assetSymbol: "IT0005441883",
@@ -490,10 +508,31 @@ test.describe("CSV Import Wizard", () => {
       accountName: IMPORT_EUR_ACCOUNT,
     });
 
+    // BOND: TAX — currency EUR, fxRate
+    await assertDataGridRow(page, "e2e-bond-tax", {
+      assetSymbol: "IT0005441883",
+      amount: "600",
+      currency: "EUR",
+      fxRate: "1.08",
+      instrumentType: "Bond",
+    });
+
     // CRYPTO: BUY — instrumentType
+    // KNOWN BUG: the "-USD" suffix is stripped from crypto tickers during asset resolution.
+    // If this assertion fails with "BTC-USD", the bug has been fixed — update to "BTC-USD".
     await assertDataGridRow(page, "e2e-crypto-buy", {
       assetSymbol: "BTC",
       quantity: "0.5",
+      instrumentType: "Crypto",
+    });
+
+    // CRYPTO: SELL
+    // KNOWN BUG: the "-USD" suffix is stripped from crypto tickers during asset resolution.
+    // If this assertion fails with "BTC-USD", the bug has been fixed — update to "BTC-USD".
+    await assertDataGridRow(page, "e2e-crypto-sell", {
+      assetSymbol: "BTC",
+      quantity: "0.25",
+      amount: "11250",
       instrumentType: "Crypto",
     });
 
@@ -510,6 +549,13 @@ test.describe("CSV Import Wizard", () => {
       quantity: "2",
     });
 
+    // OPTION: SELL
+    await assertDataGridRow(page, "e2e-option-sell", {
+      instrumentType: "Option",
+      quantity: "2",
+      amount: "4000",
+    });
+
     // METAL: BUY — instrumentType (GLD = SPDR Gold Shares ETF, forced to METAL)
     await assertDataGridRow(page, "e2e-metal-buy", {
       assetSymbol: "GLD",
@@ -517,8 +563,22 @@ test.describe("CSV Import Wizard", () => {
       amount: "190",
     });
 
+    // METAL: SELL
+    await assertDataGridRow(page, "e2e-metal-sell", {
+      assetSymbol: "GLD",
+      instrumentType: "Metal",
+      amount: "200",
+    });
+
     // FX: BUY — instrumentType (FXE = CurrencyShares Euro Trust ETF, forced to FX)
     await assertDataGridRow(page, "e2e-fx-buy", {
+      assetSymbol: "FXE",
+      instrumentType: "FX",
+      quantity: "100",
+    });
+
+    // FX: SELL
+    await assertDataGridRow(page, "e2e-fx-sell", {
       assetSymbol: "FXE",
       instrumentType: "FX",
       quantity: "100",
