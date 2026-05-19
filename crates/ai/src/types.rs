@@ -40,6 +40,7 @@ pub const DEFAULT_TOOLS_ALLOWLIST: &[&str] = &[
     "import_csv",
     "get_health_status",
     "list_taxonomies",
+    "get_asset_taxonomy_assignments",
 ];
 
 const LEGACY_VISIBLE_DATA_TOOLS: &[&str] = &[

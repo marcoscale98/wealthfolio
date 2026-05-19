@@ -10,6 +10,21 @@ use crate::errors::Result;
 pub trait AssetServiceTrait: Send + Sync {
     fn get_assets(&self) -> Result<Vec<Asset>>;
     fn get_asset_by_id(&self, asset_id: &str) -> Result<Asset>;
+
+    /// Search for active assets whose `instrument_symbol` exactly matches `query`
+    /// (case-insensitive). Returns all matches; callers apply tie-break logic.
+    fn search_by_symbol(&self, query: &str) -> Result<Vec<Asset>> {
+        let upper = query.trim().to_uppercase();
+        let assets = self.get_assets()?;
+        Ok(assets
+            .into_iter()
+            .filter(|a| {
+                a.instrument_symbol
+                    .as_deref()
+                    .is_some_and(|s| s.to_uppercase() == upper)
+            })
+            .collect())
+    }
     async fn delete_asset(&self, asset_id: &str) -> Result<()>;
     async fn update_asset_profile(
         &self,

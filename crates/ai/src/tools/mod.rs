@@ -17,6 +17,7 @@
 pub mod accounts;
 pub mod activities;
 pub mod allocation;
+pub mod asset_taxonomy_assignments;
 pub mod cash_balances;
 pub mod constants;
 pub mod goals;
@@ -37,6 +38,7 @@ pub use constants::*;
 pub use accounts::GetAccountsTool;
 pub use activities::SearchActivitiesTool;
 pub use allocation::GetAssetAllocationTool;
+pub use asset_taxonomy_assignments::GetAssetTaxonomyAssignmentsTool;
 pub use cash_balances::GetCashBalancesTool;
 pub use goals::GetGoalsTool;
 pub use health::GetHealthStatusTool;
@@ -69,6 +71,7 @@ pub struct ToolSet<E: AiEnvironment> {
     pub import_csv: ImportCsvTool<E>,
     pub health_status: GetHealthStatusTool<E>,
     pub list_taxonomies: ListTaxonomiesTool<E>,
+    pub get_asset_taxonomy_assignments: GetAssetTaxonomyAssignmentsTool<E>,
 }
 
 impl<E: AiEnvironment> ToolSet<E> {
@@ -88,7 +91,8 @@ impl<E: AiEnvironment> ToolSet<E> {
             record_activities: RecordActivitiesTool::new(env.clone()),
             import_csv: ImportCsvTool::new(env.clone(), base_currency),
             health_status: GetHealthStatusTool::new(env.clone()),
-            list_taxonomies: ListTaxonomiesTool::new(env),
+            list_taxonomies: ListTaxonomiesTool::new(env.clone()),
+            get_asset_taxonomy_assignments: GetAssetTaxonomyAssignmentsTool::new(env),
         }
     }
 }

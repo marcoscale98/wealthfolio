@@ -9,6 +9,7 @@ use std::sync::Arc;
 use wealthfolio_core::{
     accounts::AccountServiceTrait,
     activities::ActivityServiceTrait,
+    assets::AssetServiceTrait,
     goals::GoalServiceTrait,
     health::HealthServiceTrait,
     portfolio::{
@@ -78,6 +79,9 @@ pub trait AiEnvironment: Send + Sync {
 
     /// Get the taxonomy service for listing taxonomies and categories.
     fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait>;
+
+    /// Get the asset service for looking up assets by symbol.
+    fn assets_service(&self) -> Arc<dyn AssetServiceTrait>;
 }
 
 #[cfg(test)]
@@ -1341,6 +1345,110 @@ pub mod test_env {
         }
     }
 
+    /// Mock assets service for testing (symbol-based lookup).
+    #[derive(Default)]
+    pub struct MockAssetsService {
+        pub assets: Vec<Asset>,
+    }
+
+    #[async_trait]
+    impl AssetServiceTrait for MockAssetsService {
+        fn get_assets(&self) -> CoreResult<Vec<Asset>> {
+            Ok(self.assets.clone())
+        }
+
+        fn get_asset_by_id(&self, asset_id: &str) -> CoreResult<Asset> {
+            self.assets
+                .iter()
+                .find(|a| a.id == asset_id)
+                .cloned()
+                .ok_or_else(|| {
+                    CoreError::Database(DatabaseError::NotFound(format!("Asset {}", asset_id)))
+                })
+        }
+
+        async fn delete_asset(&self, _asset_id: &str) -> CoreResult<()> {
+            unimplemented!("MockAssetsService::delete_asset")
+        }
+
+        async fn update_asset_profile(
+            &self,
+            _asset_id: &str,
+            _payload: wealthfolio_core::assets::UpdateAssetProfile,
+        ) -> CoreResult<Asset> {
+            unimplemented!("MockAssetsService::update_asset_profile")
+        }
+
+        async fn create_asset(
+            &self,
+            _new_asset: wealthfolio_core::assets::NewAsset,
+        ) -> CoreResult<Asset> {
+            unimplemented!("MockAssetsService::create_asset")
+        }
+
+        async fn get_or_create_minimal_asset(
+            &self,
+            _asset_id: &str,
+            _context_currency: Option<String>,
+            _metadata: Option<wealthfolio_core::assets::AssetMetadata>,
+            _quote_mode: Option<String>,
+        ) -> CoreResult<Asset> {
+            unimplemented!("MockAssetsService::get_or_create_minimal_asset")
+        }
+
+        async fn update_quote_mode(&self, _asset_id: &str, _quote_mode: &str) -> CoreResult<Asset> {
+            unimplemented!("MockAssetsService::update_quote_mode")
+        }
+
+        async fn get_assets_by_asset_ids(&self, asset_ids: &[String]) -> CoreResult<Vec<Asset>> {
+            Ok(self
+                .assets
+                .iter()
+                .filter(|a| asset_ids.contains(&a.id))
+                .cloned()
+                .collect())
+        }
+
+        async fn enrich_asset_profile(&self, _asset_id: &str) -> CoreResult<Asset> {
+            unimplemented!("MockAssetsService::enrich_asset_profile")
+        }
+
+        async fn enrich_assets(
+            &self,
+            _asset_ids: Vec<String>,
+        ) -> CoreResult<(usize, usize, usize)> {
+            unimplemented!("MockAssetsService::enrich_assets")
+        }
+
+        async fn cleanup_legacy_metadata(&self, _asset_id: &str) -> CoreResult<()> {
+            unimplemented!("MockAssetsService::cleanup_legacy_metadata")
+        }
+
+        async fn merge_unknown_asset(
+            &self,
+            _resolved_asset_id: &str,
+            _unknown_asset_id: &str,
+            _activity_repository: &dyn wealthfolio_core::activities::ActivityRepositoryTrait,
+        ) -> CoreResult<u32> {
+            unimplemented!("MockAssetsService::merge_unknown_asset")
+        }
+
+        async fn ensure_assets(
+            &self,
+            _specs: Vec<wealthfolio_core::assets::AssetSpec>,
+            _activity_repository: &dyn wealthfolio_core::activities::ActivityRepositoryTrait,
+        ) -> CoreResult<wealthfolio_core::assets::EnsureAssetsResult> {
+            unimplemented!("MockAssetsService::ensure_assets")
+        }
+
+        async fn resolve_import_asset_inputs(
+            &self,
+            _inputs: Vec<wealthfolio_core::assets::AssetResolutionInput>,
+        ) -> CoreResult<Vec<wealthfolio_core::assets::AssetResolutionOutput>> {
+            unimplemented!("MockAssetsService::resolve_import_asset_inputs")
+        }
+    }
+
     /// Mock environment for testing.
     pub struct MockEnvironment {
         pub base_currency: String,
@@ -1358,6 +1466,7 @@ pub mod test_env {
         pub income_service: Arc<dyn IncomeServiceTrait>,
         pub health_service: Arc<dyn HealthServiceTrait>,
         pub taxonomy_service: Arc<dyn TaxonomyServiceTrait>,
+        pub assets_service: Arc<dyn AssetServiceTrait>,
     }
 
     impl Default for MockEnvironment {
@@ -1384,6 +1493,7 @@ pub mod test_env {
                 income_service: Arc::new(MockIncomeService),
                 health_service: Arc::new(MockHealthService::default()),
                 taxonomy_service: Arc::new(MockTaxonomyService::default()),
+                assets_service: Arc::new(MockAssetsService::default()),
             }
         }
 
@@ -1453,6 +1563,10 @@ pub mod test_env {
 
         fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait> {
             self.taxonomy_service.clone()
+        }
+
+        fn assets_service(&self) -> Arc<dyn AssetServiceTrait> {
+            self.assets_service.clone()
         }
     }
 

@@ -8,8 +8,8 @@ use std::sync::{Arc, RwLock};
 use wealthfolio_ai::{AiEnvironment, ChatRepositoryTrait};
 use wealthfolio_core::{
     accounts::AccountServiceTrait, activities::ActivityServiceTrait,
-    allocation::AllocationServiceTrait, goals::GoalServiceTrait, health::HealthServiceTrait,
-    holdings::HoldingsServiceTrait, income::IncomeServiceTrait,
+    allocation::AllocationServiceTrait, assets::AssetServiceTrait, goals::GoalServiceTrait,
+    health::HealthServiceTrait, holdings::HoldingsServiceTrait, income::IncomeServiceTrait,
     performance::PerformanceServiceTrait, quotes::QuoteServiceTrait, secrets::SecretStore,
     settings::SettingsServiceTrait, taxonomies::TaxonomyServiceTrait,
     valuation::ValuationServiceTrait,
@@ -35,6 +35,7 @@ pub struct ServerAiEnvironment {
     income_service: Arc<dyn IncomeServiceTrait + Send + Sync>,
     health_service: Arc<dyn HealthServiceTrait + Send + Sync>,
     taxonomy_service: Arc<dyn TaxonomyServiceTrait + Send + Sync>,
+    assets_service: Arc<dyn AssetServiceTrait + Send + Sync>,
 }
 
 impl ServerAiEnvironment {
@@ -56,6 +57,7 @@ impl ServerAiEnvironment {
         income_service: Arc<dyn IncomeServiceTrait + Send + Sync>,
         health_service: Arc<dyn HealthServiceTrait + Send + Sync>,
         taxonomy_service: Arc<dyn TaxonomyServiceTrait + Send + Sync>,
+        assets_service: Arc<dyn AssetServiceTrait + Send + Sync>,
     ) -> Self {
         Self {
             base_currency,
@@ -73,6 +75,7 @@ impl ServerAiEnvironment {
             income_service,
             health_service,
             taxonomy_service,
+            assets_service,
         }
     }
 }
@@ -136,5 +139,9 @@ impl AiEnvironment for ServerAiEnvironment {
 
     fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait> {
         self.taxonomy_service.clone()
+    }
+
+    fn assets_service(&self) -> Arc<dyn AssetServiceTrait> {
+        self.assets_service.clone()
     }
 }

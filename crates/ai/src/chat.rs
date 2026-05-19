@@ -1340,6 +1340,12 @@ async fn spawn_chat_stream<E: AiEnvironment + 'static>(
             if is_allowed("get_health_status") {
                 allowed_tools.push(Box::new(tool_set.health_status));
             }
+            if is_allowed("list_taxonomies") {
+                allowed_tools.push(Box::new(tool_set.list_taxonomies));
+            }
+            if is_allowed("get_asset_taxonomy_assignments") {
+                allowed_tools.push(Box::new(tool_set.get_asset_taxonomy_assignments));
+            }
 
             let mut builder = $client
                 .agent(&model_id)
