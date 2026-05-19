@@ -19,6 +19,7 @@ use wealthfolio_core::{
     quotes::QuoteServiceTrait,
     secrets::SecretStore,
     settings::SettingsServiceTrait,
+    taxonomies::TaxonomyServiceTrait,
 };
 
 use crate::types::ChatRepositoryTrait;
@@ -74,6 +75,9 @@ pub trait AiEnvironment: Send + Sync {
 
     /// Get the health service for portfolio health diagnostics.
     fn health_service(&self) -> Arc<dyn HealthServiceTrait>;
+
+    /// Get the taxonomy service for listing taxonomies and categories.
+    fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait>;
 }
 
 #[cfg(test)]
@@ -118,7 +122,10 @@ pub mod test_env {
         },
         secrets::SecretStore,
         settings::{Settings, SettingsServiceTrait, SettingsUpdate},
-        taxonomies::TaxonomyServiceTrait,
+        taxonomies::{
+            AssetTaxonomyAssignment, Category, NewAssetTaxonomyAssignment, NewCategory,
+            NewTaxonomy, Taxonomy, TaxonomyServiceTrait, TaxonomyWithCategories,
+        },
         valuation::{
             DailyAccountValuation, NegativeBalanceInfo, ValuationRecalcMode, ValuationServiceTrait,
         },
@@ -1237,6 +1244,103 @@ pub mod test_env {
         }
     }
 
+    /// Mock taxonomy service for testing.
+    #[derive(Default)]
+    pub struct MockTaxonomyService {
+        pub taxonomies: Vec<TaxonomyWithCategories>,
+    }
+
+    #[async_trait]
+    impl TaxonomyServiceTrait for MockTaxonomyService {
+        fn get_taxonomies(&self) -> CoreResult<Vec<Taxonomy>> {
+            Ok(self.taxonomies.iter().map(|t| t.taxonomy.clone()).collect())
+        }
+
+        fn get_taxonomy(&self, id: &str) -> CoreResult<Option<TaxonomyWithCategories>> {
+            Ok(self
+                .taxonomies
+                .iter()
+                .find(|t| t.taxonomy.id == id)
+                .cloned())
+        }
+
+        fn get_taxonomies_with_categories(&self) -> CoreResult<Vec<TaxonomyWithCategories>> {
+            Ok(self.taxonomies.clone())
+        }
+
+        async fn create_taxonomy(&self, _taxonomy: NewTaxonomy) -> CoreResult<Taxonomy> {
+            unimplemented!("MockTaxonomyService::create_taxonomy")
+        }
+
+        async fn update_taxonomy(&self, _taxonomy: Taxonomy) -> CoreResult<Taxonomy> {
+            unimplemented!("MockTaxonomyService::update_taxonomy")
+        }
+
+        async fn delete_taxonomy(&self, _id: &str) -> CoreResult<usize> {
+            unimplemented!("MockTaxonomyService::delete_taxonomy")
+        }
+
+        async fn create_category(&self, _category: NewCategory) -> CoreResult<Category> {
+            unimplemented!("MockTaxonomyService::create_category")
+        }
+
+        async fn update_category(&self, _category: Category) -> CoreResult<Category> {
+            unimplemented!("MockTaxonomyService::update_category")
+        }
+
+        async fn delete_category(
+            &self,
+            _taxonomy_id: &str,
+            _category_id: &str,
+        ) -> CoreResult<usize> {
+            unimplemented!("MockTaxonomyService::delete_category")
+        }
+
+        async fn move_category(
+            &self,
+            _taxonomy_id: &str,
+            _category_id: &str,
+            _new_parent_id: Option<String>,
+            _position: i32,
+        ) -> CoreResult<Category> {
+            unimplemented!("MockTaxonomyService::move_category")
+        }
+
+        async fn import_taxonomy_json(&self, _json_str: &str) -> CoreResult<Taxonomy> {
+            unimplemented!("MockTaxonomyService::import_taxonomy_json")
+        }
+
+        fn export_taxonomy_json(&self, _id: &str) -> CoreResult<String> {
+            unimplemented!("MockTaxonomyService::export_taxonomy_json")
+        }
+
+        fn get_asset_assignments(
+            &self,
+            _asset_id: &str,
+        ) -> CoreResult<Vec<AssetTaxonomyAssignment>> {
+            Ok(Vec::new())
+        }
+
+        fn get_category_assignments(
+            &self,
+            _taxonomy_id: &str,
+            _category_id: &str,
+        ) -> CoreResult<Vec<AssetTaxonomyAssignment>> {
+            Ok(Vec::new())
+        }
+
+        async fn assign_asset_to_category(
+            &self,
+            _assignment: NewAssetTaxonomyAssignment,
+        ) -> CoreResult<AssetTaxonomyAssignment> {
+            unimplemented!("MockTaxonomyService::assign_asset_to_category")
+        }
+
+        async fn remove_asset_assignment(&self, _id: &str) -> CoreResult<usize> {
+            unimplemented!("MockTaxonomyService::remove_asset_assignment")
+        }
+    }
+
     /// Mock environment for testing.
     pub struct MockEnvironment {
         pub base_currency: String,
@@ -1253,6 +1357,7 @@ pub mod test_env {
         pub performance_service: Arc<dyn PerformanceServiceTrait>,
         pub income_service: Arc<dyn IncomeServiceTrait>,
         pub health_service: Arc<dyn HealthServiceTrait>,
+        pub taxonomy_service: Arc<dyn TaxonomyServiceTrait>,
     }
 
     impl Default for MockEnvironment {
@@ -1278,6 +1383,7 @@ pub mod test_env {
                 performance_service: Arc::new(MockPerformanceService),
                 income_service: Arc::new(MockIncomeService),
                 health_service: Arc::new(MockHealthService::default()),
+                taxonomy_service: Arc::new(MockTaxonomyService::default()),
             }
         }
 
@@ -1343,6 +1449,10 @@ pub mod test_env {
 
         fn health_service(&self) -> Arc<dyn HealthServiceTrait> {
             self.health_service.clone()
+        }
+
+        fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait> {
+            self.taxonomy_service.clone()
         }
     }
 

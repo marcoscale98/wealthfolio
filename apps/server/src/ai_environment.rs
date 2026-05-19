@@ -11,7 +11,8 @@ use wealthfolio_core::{
     allocation::AllocationServiceTrait, goals::GoalServiceTrait, health::HealthServiceTrait,
     holdings::HoldingsServiceTrait, income::IncomeServiceTrait,
     performance::PerformanceServiceTrait, quotes::QuoteServiceTrait, secrets::SecretStore,
-    settings::SettingsServiceTrait, valuation::ValuationServiceTrait,
+    settings::SettingsServiceTrait, taxonomies::TaxonomyServiceTrait,
+    valuation::ValuationServiceTrait,
 };
 
 /// Server-side implementation of AiEnvironment.
@@ -33,6 +34,7 @@ pub struct ServerAiEnvironment {
     performance_service: Arc<dyn PerformanceServiceTrait + Send + Sync>,
     income_service: Arc<dyn IncomeServiceTrait + Send + Sync>,
     health_service: Arc<dyn HealthServiceTrait + Send + Sync>,
+    taxonomy_service: Arc<dyn TaxonomyServiceTrait + Send + Sync>,
 }
 
 impl ServerAiEnvironment {
@@ -53,6 +55,7 @@ impl ServerAiEnvironment {
         performance_service: Arc<dyn PerformanceServiceTrait + Send + Sync>,
         income_service: Arc<dyn IncomeServiceTrait + Send + Sync>,
         health_service: Arc<dyn HealthServiceTrait + Send + Sync>,
+        taxonomy_service: Arc<dyn TaxonomyServiceTrait + Send + Sync>,
     ) -> Self {
         Self {
             base_currency,
@@ -69,6 +72,7 @@ impl ServerAiEnvironment {
             performance_service,
             income_service,
             health_service,
+            taxonomy_service,
         }
     }
 }
@@ -128,5 +132,9 @@ impl AiEnvironment for ServerAiEnvironment {
 
     fn health_service(&self) -> Arc<dyn HealthServiceTrait> {
         self.health_service.clone()
+    }
+
+    fn taxonomy_service(&self) -> Arc<dyn TaxonomyServiceTrait> {
+        self.taxonomy_service.clone()
     }
 }
