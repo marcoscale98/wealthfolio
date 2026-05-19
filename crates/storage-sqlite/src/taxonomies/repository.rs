@@ -415,6 +415,69 @@ impl TaxonomyRepositoryTrait for TaxonomyRepository {
             .await
     }
 
+    async fn replace_asset_assignments(
+        &self,
+        asset_id: &str,
+        taxonomy_id: &str,
+        assignments: Vec<NewAssetTaxonomyAssignment>,
+    ) -> Result<Vec<AssetTaxonomyAssignment>> {
+        let asset_id = asset_id.to_string();
+        let taxonomy_id = taxonomy_id.to_string();
+        self.writer
+            .exec_tx(move |tx| -> Result<Vec<AssetTaxonomyAssignment>> {
+                // 1. Collect existing IDs for sync projection
+                let existing_ids = asset_taxonomy_assignments::table
+                    .filter(asset_taxonomy_assignments::asset_id.eq(&asset_id))
+                    .filter(asset_taxonomy_assignments::taxonomy_id.eq(&taxonomy_id))
+                    .select(asset_taxonomy_assignments::id)
+                    .load::<String>(tx.conn())
+                    .map_err(StorageError::from)?;
+
+                // 2. Delete all existing rows
+                diesel::delete(
+                    asset_taxonomy_assignments::table
+                        .filter(asset_taxonomy_assignments::asset_id.eq(&asset_id))
+                        .filter(asset_taxonomy_assignments::taxonomy_id.eq(&taxonomy_id)),
+                )
+                .execute(tx.conn())
+                .map_err(StorageError::from)?;
+
+                // 3. Emit sync delete for each removed row
+                for id in existing_ids {
+                    tx.delete::<AssetTaxonomyAssignmentDB>(id);
+                }
+
+                // 4. Insert new rows, emit sync update for each
+                let mut result = Vec::with_capacity(assignments.len());
+                for assignment in assignments {
+                    let mut db: NewAssetTaxonomyAssignmentDB = assignment.into();
+                    db.id = Some(db.id.unwrap_or_else(|| Uuid::new_v4().to_string()));
+
+                    let persisted = diesel::insert_into(asset_taxonomy_assignments::table)
+                        .values(&db)
+                        .on_conflict((
+                            asset_taxonomy_assignments::asset_id,
+                            asset_taxonomy_assignments::taxonomy_id,
+                            asset_taxonomy_assignments::category_id,
+                        ))
+                        .do_update()
+                        .set((
+                            asset_taxonomy_assignments::weight.eq(&db.weight),
+                            asset_taxonomy_assignments::source.eq(&db.source),
+                        ))
+                        .returning(AssetTaxonomyAssignmentDB::as_returning())
+                        .get_result(tx.conn())
+                        .map_err(StorageError::from)?;
+
+                    tx.update(&persisted)?;
+                    result.push(AssetTaxonomyAssignment::from(persisted));
+                }
+
+                Ok(result)
+            })
+            .await
+    }
+
     fn get_taxonomy_with_categories(&self, id: &str) -> Result<Option<TaxonomyWithCategories>> {
         let taxonomy = self.get_taxonomy(id)?;
         match taxonomy {

@@ -19,9 +19,10 @@ pub trait AssetServiceTrait: Send + Sync {
         Ok(assets
             .into_iter()
             .filter(|a| {
-                a.instrument_symbol
-                    .as_deref()
-                    .is_some_and(|s| s.to_uppercase() == upper)
+                a.is_active
+                    && a.instrument_symbol
+                        .as_deref()
+                        .is_some_and(|s| s.to_uppercase() == upper)
             })
             .collect())
     }

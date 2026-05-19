@@ -44,6 +44,15 @@ pub trait TaxonomyRepositoryTrait: Send + Sync {
     // Bulk operations
     fn get_taxonomy_with_categories(&self, id: &str) -> Result<Option<TaxonomyWithCategories>>;
     fn get_all_taxonomies_with_categories(&self) -> Result<Vec<TaxonomyWithCategories>>;
+
+    /// Atomically replaces all assignments for `(asset_id, taxonomy_id)` in a single
+    /// transaction: deletes existing rows, inserts all new rows, returns the persisted set.
+    async fn replace_asset_assignments(
+        &self,
+        asset_id: &str,
+        taxonomy_id: &str,
+        assignments: Vec<NewAssetTaxonomyAssignment>,
+    ) -> Result<Vec<AssetTaxonomyAssignment>>;
 }
 
 /// Service trait for taxonomy business logic.

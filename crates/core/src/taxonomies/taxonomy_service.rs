@@ -292,16 +292,8 @@ impl TaxonomyServiceTrait for TaxonomyService {
         assignments: Vec<NewAssetTaxonomyAssignment>,
     ) -> Result<Vec<AssetTaxonomyAssignment>> {
         self.repository
-            .delete_asset_assignments(asset_id, taxonomy_id)
-            .await?;
-
-        let mut result = Vec::with_capacity(assignments.len());
-        for assignment in assignments {
-            let persisted = self.repository.upsert_assignment(assignment).await?;
-            result.push(persisted);
-        }
-
-        Ok(result)
+            .replace_asset_assignments(asset_id, taxonomy_id, assignments)
+            .await
     }
 }
 
@@ -481,6 +473,45 @@ mod tests {
 
         fn get_all_taxonomies_with_categories(&self) -> Result<Vec<TaxonomyWithCategories>> {
             Ok(vec![])
+        }
+
+        async fn replace_asset_assignments(
+            &self,
+            asset_id: &str,
+            taxonomy_id: &str,
+            assignments: Vec<NewAssetTaxonomyAssignment>,
+        ) -> Result<Vec<AssetTaxonomyAssignment>> {
+            // Delete existing rows for (asset_id, taxonomy_id)
+            let mut guard = self.assignments.lock().unwrap();
+            guard.retain(|a| !(a.asset_id == asset_id && a.taxonomy_id == taxonomy_id));
+
+            // Insert new rows
+            let mut result = Vec::with_capacity(assignments.len());
+            for assignment in assignments {
+                let id = assignment
+                    .id
+                    .clone()
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                // On-conflict: remove existing entry with same (asset_id, taxonomy_id, category_id)
+                guard.retain(|a| {
+                    !(a.asset_id == assignment.asset_id
+                        && a.taxonomy_id == assignment.taxonomy_id
+                        && a.category_id == assignment.category_id)
+                });
+                let persisted = AssetTaxonomyAssignment {
+                    id,
+                    asset_id: assignment.asset_id,
+                    taxonomy_id: assignment.taxonomy_id,
+                    category_id: assignment.category_id,
+                    weight: assignment.weight,
+                    source: assignment.source,
+                    created_at: chrono::NaiveDateTime::default(),
+                    updated_at: chrono::NaiveDateTime::default(),
+                };
+                guard.push(persisted.clone());
+                result.push(persisted);
+            }
+            Ok(result)
         }
     }
 

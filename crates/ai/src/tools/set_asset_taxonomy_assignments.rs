@@ -164,12 +164,34 @@ impl<E: AiEnvironment + 'static> Tool for SetAssetTaxonomyAssignmentsTool<E> {
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         // 1. Validate weights before any DB writes
-        let total = validate_weights(&args.assignments)?;
+        validate_weights(&args.assignments)?;
 
         // 2. Resolve symbol → asset_id
         let asset_id = resolve_symbol(&self.env.assets_service(), &args.symbol)?;
 
-        // 3. Build NewAssetTaxonomyAssignment list with source = "ai"
+        // 3. Validate category_ids against the taxonomy
+        let taxonomy = self
+            .env
+            .taxonomy_service()
+            .get_taxonomy(&args.taxonomy_id)
+            .map_err(|e| AiError::ToolExecutionFailed(e.to_string()))?
+            .ok_or_else(|| {
+                AiError::ToolExecutionFailed(format!("Taxonomy '{}' not found", args.taxonomy_id))
+            })?;
+
+        let valid_category_ids: std::collections::HashSet<&str> =
+            taxonomy.categories.iter().map(|c| c.id.as_str()).collect();
+
+        for a in &args.assignments {
+            if !valid_category_ids.contains(a.category_id.as_str()) {
+                return Err(AiError::ToolExecutionFailed(format!(
+                    "Unknown category_id '{}' for taxonomy '{}'",
+                    a.category_id, args.taxonomy_id
+                )));
+            }
+        }
+
+        // 4. Build NewAssetTaxonomyAssignment list with source = "ai"
         let new_assignments: Vec<NewAssetTaxonomyAssignment> = args
             .assignments
             .iter()
@@ -183,7 +205,7 @@ impl<E: AiEnvironment + 'static> Tool for SetAssetTaxonomyAssignmentsTool<E> {
             })
             .collect();
 
-        // 4. Atomic replace via service
+        // 5. Atomic replace via service
         let persisted = self
             .env
             .taxonomy_service()
@@ -191,17 +213,15 @@ impl<E: AiEnvironment + 'static> Tool for SetAssetTaxonomyAssignmentsTool<E> {
             .await
             .map_err(|e| AiError::ToolExecutionFailed(e.to_string()))?;
 
-        // 5. Enrich with category names by loading taxonomies
-        let taxonomies = self
-            .env
-            .taxonomy_service()
-            .get_taxonomies_with_categories()
-            .map_err(|e| AiError::ToolExecutionFailed(e.to_string()))?;
-
-        let cat_name_lookup: std::collections::HashMap<String, String> = taxonomies
+        // 6. Enrich with category names (reuse taxonomy already loaded in step 3)
+        let cat_name_lookup: std::collections::HashMap<String, String> = taxonomy
+            .categories
             .into_iter()
-            .flat_map(|twc| twc.categories.into_iter().map(|c| (c.id, c.name)))
+            .map(|c| (c.id, c.name))
             .collect();
+
+        // 7. Compute unallocated from persisted rows (handles dedup by the DB)
+        let persisted_total: i32 = persisted.iter().map(|a| a.weight).sum();
 
         let assignments = persisted
             .into_iter()
@@ -221,7 +241,7 @@ impl<E: AiEnvironment + 'static> Tool for SetAssetTaxonomyAssignmentsTool<E> {
 
         Ok(SetAssetTaxonomyAssignmentsOutput {
             assignments,
-            unallocated_basis_points: 10000 - total,
+            unallocated_basis_points: 10000 - persisted_total,
         })
     }
 }
@@ -239,8 +259,8 @@ mod tests {
     use wealthfolio_core::{
         assets::Asset,
         taxonomies::{
-            AssetTaxonomyAssignment, NewAssetTaxonomyAssignment, NewCategory, NewTaxonomy,
-            TaxonomyServiceTrait, TaxonomyWithCategories,
+            AssetTaxonomyAssignment, Category, NewAssetTaxonomyAssignment, NewCategory,
+            NewTaxonomy, Taxonomy, TaxonomyServiceTrait, TaxonomyWithCategories,
         },
     };
 
@@ -340,14 +360,50 @@ mod tests {
 
     /// Mock taxonomy service that captures calls to replace_asset_assignments.
     struct MockSetTaxonomyService {
+        taxonomy: TaxonomyWithCategories,
         assignments: Mutex<Vec<AssetTaxonomyAssignment>>,
     }
 
     impl MockSetTaxonomyService {
-        fn new() -> Self {
+        fn new(taxonomy: TaxonomyWithCategories) -> Self {
             Self {
+                taxonomy,
                 assignments: Mutex::new(vec![]),
             }
+        }
+    }
+
+    fn make_taxonomy(id: &str, category_ids: &[&str]) -> TaxonomyWithCategories {
+        let now = NaiveDateTime::default();
+        let taxonomy = Taxonomy {
+            id: id.to_string(),
+            name: id.to_string(),
+            color: "#ffffff".to_string(),
+            description: None,
+            is_system: false,
+            is_single_select: false,
+            sort_order: 0,
+            created_at: now,
+            updated_at: now,
+        };
+        let categories = category_ids
+            .iter()
+            .map(|&cat_id| Category {
+                id: cat_id.to_string(),
+                taxonomy_id: id.to_string(),
+                parent_id: None,
+                name: cat_id.to_string(),
+                key: cat_id.to_string(),
+                color: "#808080".to_string(),
+                description: None,
+                sort_order: 0,
+                created_at: now,
+                updated_at: now,
+            })
+            .collect();
+        TaxonomyWithCategories {
+            taxonomy,
+            categories,
         }
     }
 
@@ -361,9 +417,13 @@ mod tests {
 
         fn get_taxonomy(
             &self,
-            _id: &str,
+            id: &str,
         ) -> wealthfolio_core::errors::Result<Option<TaxonomyWithCategories>> {
-            Ok(None)
+            if self.taxonomy.taxonomy.id == id {
+                Ok(Some(self.taxonomy.clone()))
+            } else {
+                Ok(None)
+            }
         }
 
         fn get_taxonomies_with_categories(
@@ -487,7 +547,10 @@ mod tests {
     }
 
     fn make_env_with_asset(asset: Asset) -> (MockEnvironment, Arc<MockSetTaxonomyService>) {
-        let taxonomy_svc = Arc::new(MockSetTaxonomyService::new());
+        let taxonomy_svc = Arc::new(MockSetTaxonomyService::new(make_taxonomy(
+            "regions",
+            &["US", "EU"],
+        )));
         let mut env = MockEnvironment::new();
         env.assets_service = Arc::new(MockAssetsService {
             assets: vec![asset],
