@@ -1346,6 +1346,9 @@ async fn spawn_chat_stream<E: AiEnvironment + 'static>(
             if is_allowed("get_asset_taxonomy_assignments") {
                 allowed_tools.push(Box::new(tool_set.get_asset_taxonomy_assignments));
             }
+            if is_allowed("set_asset_taxonomy_assignments") {
+                allowed_tools.push(Box::new(tool_set.set_asset_taxonomy_assignments));
+            }
 
             let mut builder = $client
                 .agent(&model_id)

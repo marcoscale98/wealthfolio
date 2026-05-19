@@ -28,6 +28,7 @@ pub mod income;
 pub mod performance;
 pub mod record_activities;
 pub mod record_activity;
+pub mod set_asset_taxonomy_assignments;
 pub mod taxonomies;
 pub mod valuation;
 
@@ -48,6 +49,7 @@ pub use income::GetIncomeTool;
 pub use performance::GetPerformanceTool;
 pub use record_activities::RecordActivitiesTool;
 pub use record_activity::RecordActivityTool;
+pub use set_asset_taxonomy_assignments::SetAssetTaxonomyAssignmentsTool;
 pub use taxonomies::ListTaxonomiesTool;
 pub use valuation::GetValuationHistoryTool;
 
@@ -72,6 +74,7 @@ pub struct ToolSet<E: AiEnvironment> {
     pub health_status: GetHealthStatusTool<E>,
     pub list_taxonomies: ListTaxonomiesTool<E>,
     pub get_asset_taxonomy_assignments: GetAssetTaxonomyAssignmentsTool<E>,
+    pub set_asset_taxonomy_assignments: SetAssetTaxonomyAssignmentsTool<E>,
 }
 
 impl<E: AiEnvironment> ToolSet<E> {
@@ -92,7 +95,8 @@ impl<E: AiEnvironment> ToolSet<E> {
             import_csv: ImportCsvTool::new(env.clone(), base_currency),
             health_status: GetHealthStatusTool::new(env.clone()),
             list_taxonomies: ListTaxonomiesTool::new(env.clone()),
-            get_asset_taxonomy_assignments: GetAssetTaxonomyAssignmentsTool::new(env),
+            get_asset_taxonomy_assignments: GetAssetTaxonomyAssignmentsTool::new(env.clone()),
+            set_asset_taxonomy_assignments: SetAssetTaxonomyAssignmentsTool::new(env),
         }
     }
 }

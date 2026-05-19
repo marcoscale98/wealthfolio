@@ -1343,6 +1343,15 @@ pub mod test_env {
         async fn remove_asset_assignment(&self, _id: &str) -> CoreResult<usize> {
             unimplemented!("MockTaxonomyService::remove_asset_assignment")
         }
+
+        async fn replace_asset_assignments(
+            &self,
+            _asset_id: &str,
+            _taxonomy_id: &str,
+            _assignments: Vec<NewAssetTaxonomyAssignment>,
+        ) -> CoreResult<Vec<AssetTaxonomyAssignment>> {
+            unimplemented!("MockTaxonomyService::replace_asset_assignments")
+        }
     }
 
     /// Mock assets service for testing (symbol-based lookup).

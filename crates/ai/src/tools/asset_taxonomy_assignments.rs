@@ -510,5 +510,16 @@ mod tests {
         ) -> wealthfolio_core::errors::Result<usize> {
             unimplemented!()
         }
+
+        async fn replace_asset_assignments(
+            &self,
+            _asset_id: &str,
+            _taxonomy_id: &str,
+            _assignments: Vec<wealthfolio_core::taxonomies::NewAssetTaxonomyAssignment>,
+        ) -> wealthfolio_core::errors::Result<
+            Vec<wealthfolio_core::taxonomies::AssetTaxonomyAssignment>,
+        > {
+            unimplemented!()
+        }
     }
 }

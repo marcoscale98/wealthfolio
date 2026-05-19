@@ -284,4 +284,281 @@ impl TaxonomyServiceTrait for TaxonomyService {
     async fn remove_asset_assignment(&self, id: &str) -> Result<usize> {
         self.repository.delete_assignment(id).await
     }
+
+    async fn replace_asset_assignments(
+        &self,
+        asset_id: &str,
+        taxonomy_id: &str,
+        assignments: Vec<NewAssetTaxonomyAssignment>,
+    ) -> Result<Vec<AssetTaxonomyAssignment>> {
+        self.repository
+            .delete_asset_assignments(asset_id, taxonomy_id)
+            .await?;
+
+        let mut result = Vec::with_capacity(assignments.len());
+        for assignment in assignments {
+            let persisted = self.repository.upsert_assignment(assignment).await?;
+            result.push(persisted);
+        }
+
+        Ok(result)
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDateTime;
+    use std::sync::Mutex;
+
+    // ---- Minimal in-memory mock repository ----
+
+    #[derive(Default)]
+    struct MockTaxonomyRepo {
+        assignments: Mutex<Vec<AssetTaxonomyAssignment>>,
+    }
+
+    impl MockTaxonomyRepo {
+        fn with_assignments(assignments: Vec<AssetTaxonomyAssignment>) -> Self {
+            Self {
+                assignments: Mutex::new(assignments),
+            }
+        }
+    }
+
+    fn make_assignment(
+        asset_id: &str,
+        taxonomy_id: &str,
+        category_id: &str,
+        weight: i32,
+    ) -> AssetTaxonomyAssignment {
+        AssetTaxonomyAssignment {
+            id: format!("{}-{}-{}", asset_id, taxonomy_id, category_id),
+            asset_id: asset_id.to_string(),
+            taxonomy_id: taxonomy_id.to_string(),
+            category_id: category_id.to_string(),
+            weight,
+            source: "manual".to_string(),
+            created_at: NaiveDateTime::default(),
+            updated_at: NaiveDateTime::default(),
+        }
+    }
+
+    fn new_assignment(
+        asset_id: &str,
+        taxonomy_id: &str,
+        category_id: &str,
+        weight: i32,
+    ) -> NewAssetTaxonomyAssignment {
+        NewAssetTaxonomyAssignment {
+            id: None,
+            asset_id: asset_id.to_string(),
+            taxonomy_id: taxonomy_id.to_string(),
+            category_id: category_id.to_string(),
+            weight,
+            source: "ai".to_string(),
+        }
+    }
+
+    #[async_trait]
+    impl TaxonomyRepositoryTrait for MockTaxonomyRepo {
+        fn get_taxonomies(&self) -> Result<Vec<super::Taxonomy>> {
+            Ok(vec![])
+        }
+
+        fn get_taxonomy(&self, _id: &str) -> Result<Option<super::Taxonomy>> {
+            Ok(None)
+        }
+
+        async fn create_taxonomy(&self, _t: NewTaxonomy) -> Result<super::Taxonomy> {
+            unimplemented!()
+        }
+
+        async fn update_taxonomy(&self, _t: super::Taxonomy) -> Result<super::Taxonomy> {
+            unimplemented!()
+        }
+
+        async fn delete_taxonomy(&self, _id: &str) -> Result<usize> {
+            unimplemented!()
+        }
+
+        fn get_categories(&self, _taxonomy_id: &str) -> Result<Vec<Category>> {
+            Ok(vec![])
+        }
+
+        fn get_category(&self, _taxonomy_id: &str, _category_id: &str) -> Result<Option<Category>> {
+            Ok(None)
+        }
+
+        async fn create_category(&self, _c: NewCategory) -> Result<Category> {
+            unimplemented!()
+        }
+
+        async fn update_category(&self, _c: Category) -> Result<Category> {
+            unimplemented!()
+        }
+
+        async fn delete_category(&self, _taxonomy_id: &str, _category_id: &str) -> Result<usize> {
+            unimplemented!()
+        }
+
+        async fn bulk_create_categories(&self, _cats: Vec<NewCategory>) -> Result<usize> {
+            unimplemented!()
+        }
+
+        fn get_asset_assignments(&self, asset_id: &str) -> Result<Vec<AssetTaxonomyAssignment>> {
+            Ok(self
+                .assignments
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|a| a.asset_id == asset_id)
+                .cloned()
+                .collect())
+        }
+
+        fn get_category_assignments(
+            &self,
+            _taxonomy_id: &str,
+            _category_id: &str,
+        ) -> Result<Vec<AssetTaxonomyAssignment>> {
+            Ok(vec![])
+        }
+
+        async fn upsert_assignment(
+            &self,
+            assignment: NewAssetTaxonomyAssignment,
+        ) -> Result<AssetTaxonomyAssignment> {
+            let id = assignment
+                .id
+                .clone()
+                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+            let persisted = AssetTaxonomyAssignment {
+                id: id.clone(),
+                asset_id: assignment.asset_id.clone(),
+                taxonomy_id: assignment.taxonomy_id.clone(),
+                category_id: assignment.category_id.clone(),
+                weight: assignment.weight,
+                source: assignment.source.clone(),
+                created_at: NaiveDateTime::default(),
+                updated_at: NaiveDateTime::default(),
+            };
+            let mut guard = self.assignments.lock().unwrap();
+            // Remove existing by id if present
+            guard.retain(|a| a.id != id);
+            guard.push(persisted.clone());
+            Ok(persisted)
+        }
+
+        async fn delete_assignment(&self, id: &str) -> Result<usize> {
+            let mut guard = self.assignments.lock().unwrap();
+            let before = guard.len();
+            guard.retain(|a| a.id != id);
+            Ok(before - guard.len())
+        }
+
+        async fn delete_asset_assignments(
+            &self,
+            asset_id: &str,
+            taxonomy_id: &str,
+        ) -> Result<usize> {
+            let mut guard = self.assignments.lock().unwrap();
+            let before = guard.len();
+            guard.retain(|a| !(a.asset_id == asset_id && a.taxonomy_id == taxonomy_id));
+            Ok(before - guard.len())
+        }
+
+        fn get_taxonomy_with_categories(
+            &self,
+            _id: &str,
+        ) -> Result<Option<TaxonomyWithCategories>> {
+            Ok(None)
+        }
+
+        fn get_all_taxonomies_with_categories(&self) -> Result<Vec<TaxonomyWithCategories>> {
+            Ok(vec![])
+        }
+    }
+
+    fn make_service(repo: MockTaxonomyRepo) -> TaxonomyService {
+        TaxonomyService::new(Arc::new(repo))
+    }
+
+    // ---- Test 1 (RED→GREEN): Replace non-empty set with new set ----
+    #[tokio::test]
+    async fn replace_asset_assignments_replaces_existing_rows() {
+        let existing = vec![make_assignment("AAPL", "regions", "US", 10000)];
+        let svc = make_service(MockTaxonomyRepo::with_assignments(existing));
+
+        let new_assignments = vec![
+            new_assignment("AAPL", "regions", "EU", 6000),
+            new_assignment("AAPL", "regions", "EM", 4000),
+        ];
+
+        let result = svc
+            .replace_asset_assignments("AAPL", "regions", new_assignments)
+            .await
+            .unwrap();
+
+        assert_eq!(result.len(), 2);
+        let cats: Vec<&str> = result.iter().map(|a| a.category_id.as_str()).collect();
+        assert!(cats.contains(&"EU"));
+        assert!(cats.contains(&"EM"));
+
+        // Old row must be gone
+        let all = svc.get_asset_assignments("AAPL").unwrap();
+        assert!(!all.iter().any(|a| a.category_id == "US"));
+    }
+
+    // ---- Test 2 (RED→GREEN): Replace with empty list clears assignments ----
+    #[tokio::test]
+    async fn replace_asset_assignments_empty_list_clears_assignments() {
+        let existing = vec![make_assignment("AAPL", "regions", "US", 10000)];
+        let svc = make_service(MockTaxonomyRepo::with_assignments(existing));
+
+        let result = svc
+            .replace_asset_assignments("AAPL", "regions", vec![])
+            .await
+            .unwrap();
+
+        assert!(result.is_empty());
+        let all = svc.get_asset_assignments("AAPL").unwrap();
+        assert!(all.is_empty());
+    }
+
+    // ---- Test 3 (RED→GREEN): Other taxonomies on same asset are untouched ----
+    #[tokio::test]
+    async fn replace_asset_assignments_does_not_touch_other_taxonomies() {
+        let existing = vec![
+            make_assignment("AAPL", "regions", "US", 10000),
+            make_assignment("AAPL", "sectors", "TECH", 10000),
+        ];
+        let svc = make_service(MockTaxonomyRepo::with_assignments(existing));
+
+        svc.replace_asset_assignments(
+            "AAPL",
+            "regions",
+            vec![new_assignment("AAPL", "regions", "EU", 10000)],
+        )
+        .await
+        .unwrap();
+
+        let all = svc.get_asset_assignments("AAPL").unwrap();
+        // sectors assignment must still be there
+        assert!(all
+            .iter()
+            .any(|a| a.taxonomy_id == "sectors" && a.category_id == "TECH"));
+        // old regions US must be gone
+        assert!(!all
+            .iter()
+            .any(|a| a.taxonomy_id == "regions" && a.category_id == "US"));
+        // new regions EU must exist
+        assert!(all
+            .iter()
+            .any(|a| a.taxonomy_id == "regions" && a.category_id == "EU"));
+    }
 }
