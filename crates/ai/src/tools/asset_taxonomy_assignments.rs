@@ -351,7 +351,6 @@ mod tests {
                 taxonomy,
                 categories: vec![category],
             }],
-            ..Default::default()
         };
 
         let mut env = MockEnvironment::new();
