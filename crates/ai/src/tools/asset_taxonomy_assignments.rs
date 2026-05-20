@@ -346,12 +346,13 @@ mod tests {
         let category = make_category("EUROPE", "regions", "Europe");
         let assignment = make_assignment("VWRL.MI", "regions", "EUROPE", 10000);
 
-        let mut taxonomy_svc = MockTaxonomyService::default();
-        // Override get_asset_assignments to return our assignment
-        taxonomy_svc.taxonomies = vec![TaxonomyWithCategories {
-            taxonomy,
-            categories: vec![category],
-        }];
+        let taxonomy_svc = MockTaxonomyService {
+            taxonomies: vec![TaxonomyWithCategories {
+                taxonomy,
+                categories: vec![category],
+            }],
+            ..Default::default()
+        };
 
         let mut env = MockEnvironment::new();
         env.assets_service = Arc::new(MockAssetsService {
